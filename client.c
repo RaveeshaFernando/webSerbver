@@ -7,7 +7,7 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 
-#define PORT 4201
+#define PORT 4400
 #define BUFFERSIZE 2048
 
 
@@ -53,7 +53,7 @@ int main(int argc, char** argv){
 		}
 
 		if(recv(client, buffer,BUFFERSIZE, 0)==-1){perror("\nError : Cannot receive data from the server"); return 0;}
-		else{printf("Server:%s from the server\n", buffer);}
+		else{printf("Server: %s    ~ from the server\n", buffer);}
     }
     return 0 ;
 }
