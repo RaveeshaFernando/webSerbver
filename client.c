@@ -26,6 +26,8 @@ int main(int argc, char** argv){
 	clientAddress.sin_port = htons(PORT);
 	clientAddress.sin_addr.s_addr = htonl(INADDR_ANY);
 
+
+    //connecting to the server
     if(connect(client,(struct sockaddr *)&clientAddress,sizeof(clientAddress))<0){perror("\n[!] Error : Connection unsuccessful!"); return 0 ; } 
     else {printf("~ connected to the server successfully...\n");};
     
