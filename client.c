@@ -7,7 +7,7 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 
-#define PORT 4400
+#define PORT 4200
 #define BUFFERSIZE 2048
 
 
@@ -38,12 +38,14 @@ int main(int argc, char** argv){
     char message[BUFFERSIZE-8];
 
     while(1){
+        //getting the message to be sent to the server
         strcpy(buffer,"Client: ") ;
         printf("%s",buffer);
 		scanf("%s", message);
         strcat(buffer,message);
-		send(client,buffer,strlen(buffer),0);
+		write(client,buffer,strlen(buffer));
 
+        //if the message says return, closing the client socket
 		if(strcmp(message,"return") == 0){
 			close(client);
 			printf("\n--------------------------------------------------------------------------\n");
@@ -51,9 +53,11 @@ int main(int argc, char** argv){
 			printf("[!] Disconnected!\n\n");
 			return 0 ;
 		}
+        bzero(buffer,sizeof(buffer));
 
-		if(recv(client, buffer,BUFFERSIZE, 0)==-1){perror("\nError : Cannot receive data from the server"); return 0;}
-		else{printf("Server: %s    ~ from the server\n", buffer);}
+        //read the data coming from the server and displays it
+		if(read(client,buffer,sizeof(buffer))==-1){perror("\nError : Cannot receive data from the server"); return 0;}
+		else{printf("Server: %s    ~ from the server\n",buffer);}
     }
     return 0 ;
 }

@@ -7,9 +7,9 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 
-#define PORT 4400
+#define PORT 4200
+
 #define BUFFERSIZE 2048
-#define LA INADDR_ANY
 
 #define css "text/css"
 #define gif "image/gif"
@@ -35,19 +35,19 @@ char* body =   "<!DOCTYPE html>"
                         "</center>"
                         "<hr>"
                         "<h2>What this server contains :</h2>"
-                        "<h4> mp3  - song.mp3 </h4>"
-                        "<h4> mp3  - song2.mp3 </h4>"
-                        "<h4> mp4  - video.mp4 </h4>"
-                        "<h4> jpg  - image.jpg </h4>"
+                        "<h4> mp3  - audio1.mp3 </h4>"
+                        "<h4> mp3  - audio2.mp3 </h4>"
+                        "<h4> mp4  - video1.mp4 </h4>"
+                        "<h4> mp4  - video2.mp4 </h4>"
+                        "<h4> jpg  - image1.jpg </h4>"
                         "<h4> png  - image2.png </h4>"
                         "<h4> html - page.html </h4>"
                         "<h4> pdf  - readme.pdf </h4>"
                         "<h2> copy and paste the file name on the url to visit them. </h2>"
                     "</body>"
                 "</html>";
-char *mime;
 
-void toRespond(int,char*,void*,int);
+void toRespond(int,char*,void*,int,char*);
 
 int main(int argc , char *argv[]){
     printf("\n                           The Web Server\n");
@@ -73,7 +73,7 @@ int main(int argc , char *argv[]){
     else {printf("~ Socket binded successfully...\n");}
 
 
-    //Server Listening 
+    //Server Listening for incoming connections 
     if(listen(server,20)==-1){perror("\n[!] Error : Server is not listening!\n"); return 0 ;}
     else{
         printf("\n\n                     Server listening on port %d \n" , PORT );
@@ -81,84 +81,108 @@ int main(int argc , char *argv[]){
     }
 	
     int clientSocket;
-	char buffer[BUFFERSIZE]={'\0'};
-    char rType[16]={'\0'};
-    char rPath[1024]={'\0'};
-    char* statusCode ;
+	char buffer[BUFFERSIZE];
     char reply[BUFFERSIZE]={'\0'};
-    char* message = buffer; 
+    char* message;
+    char rType[16];
+    char rPath[1024];
+    char* mime ;
+    char* statusCode; 
+    char* fileCopy;
+    size_t fileSize;        
 
+    //using while loop to have an iterative server
     while (server){
-        //accepting incoming connections
+
+        //Accepting incoming connections
         if((clientSocket= accept(server, (struct sockaddr*)&serverAddress,(socklen_t*)&serverAddress)) == -1){perror("[!] Failed to accept the Client");return -1;}  
-        else{printf("New connection accepted on address : %s : %d\n\n",inet_ntoa(serverAddress.sin_addr),ntohs(serverAddress.sin_port));}
+        else{printf("New connection accepted on address : %s:4400\n\n",inet_ntoa(serverAddress.sin_addr));}
 
+        //setting up null values on the buffer prior to read,write 
         bzero(buffer, sizeof(buffer));
+        bzero(rPath,sizeof(rPath));
+        bzero(rType,sizeof(rType));
 
-        read( clientSocket,buffer,BUFFERSIZE); 
+        //reading the requests
+        if(read( clientSocket,buffer,BUFFERSIZE)==-1){perror("[!] Read error :");} 
+        //get the first two space seperated strings and store them in rType and rPath
         sscanf(buffer, "%s %s", rType, rPath);
+        //get the mime type from the rPath by pointing to the first character after '.'
         mime = strrchr(rPath, '.');
         mime++ ;
-        
-        
-        if (!strcmp(rType, "Client:")){
-            strtok_r(message, " ", &message);
-            if(strcmp(message,"return") == 0){
-                printf("Disconnected from %s:%d\n", inet_ntoa(serverAddress.sin_addr), ntohs(serverAddress.sin_port));
-            }
-            else{
-                printf("Client : %s\nServer : ",message);
-                scanf("%s",reply);
-                send(clientSocket,reply,strlen(message), 0);
-            }
-            bzero(reply,sizeof(reply));
-        	bzero(message, sizeof(message));
-        }
-        else if(!strcmp(rType, "GET") && !strcmp(rPath, "/")){
-            char *data = body ;
+
+        //if condition runs if the request type is GET and the requested path is just "/" 
+        if(!strcmp(rType, "GET") && !strcmp(rPath, "/")){
+            //select the mime type as text/html
             mime = html;
             statusCode = "HTTP/1.1 200 OK" ;
-            printf("status code : %s\n",statusCode);
-            printf("%s \n", buffer); 
-            toRespond(clientSocket, statusCode, data, strlen(data));
+            printf("Status code : %s\n",statusCode);
+            printf("Response :\n%s \n", buffer); 
+            toRespond(clientSocket, statusCode,body, strlen(body),mime);
+        }
+        //to handle the requests from client.c 
+        else if(!strcmp(rType,"Client:")){
+            while(1){
+                sscanf(buffer, "%s %s", rType, rPath);
+                message = buffer ;
+                //split the buffer and get the message to a seperate variable
+                strtok_r(message, " ", &message);
+                //disconnect if the message says 'return'
+                if(strcmp(message,"return") == 0){
+                    printf("Disconnected from %s:%d\n", inet_ntoa(serverAddress.sin_addr), ntohs(serverAddress.sin_port));
+                }
+                //else get a reply from server to send to the client
+                else{
+                    printf("Client : %s\nServer : ",message);
+                    scanf("%s",reply);
+                    write(clientSocket,reply,strlen(reply));
+                }
+                //reset the message and reply
+                bzero(message, sizeof(message));
+                bzero(reply,sizeof(reply));
+            }
         }
         else{
+            //open the file with having read permissions 
             FILE *input = fopen(strtok(rPath, "/"),"r");
-            char *source;
-            size_t bufsize, readBytes;
-            if (input != NULL){
-                statusCode = "HTTP/1.1 200 OK" ;
-                printf("status code : %s\n",statusCode);
-                printf("%s \n", buffer); 
-                    
-                if (fseek(input, 0L, SEEK_END) == 0){
-                    bufsize = ftell(input);
-                    source = malloc((ftell(input) + 1));
-                    fseek(input, 0L, SEEK_SET);    
-                    fread(source, sizeof(char),bufsize,input);
-                    toRespond(clientSocket,statusCode, source,ftell(input));
-                }
-                free(source);
-                fclose(input);
-            }
-            else{
+            //if the file cannot be found, displaying the error!
+            if(input== NULL){
                 statusCode = "HTTP/1.1 404 NOT FOUND";
                 printf("status code : %s\n",statusCode);
-                printf("%s \n", buffer); 
-                char* extend = "<h2><center> HTTP/1.1 404 :  File Not Found</center></h2>" ;
+                printf("Response :\n%s \n", buffer); 
+                char* extend = "<br><br><h2><center> HTTP/1.1 404 : File Not Found</center></h2>" ;
                 mime = html;
-                toRespond(clientSocket,statusCode, extend, strlen(extend));
-            } 
-        }  
+                toRespond(clientSocket,statusCode, extend, strlen(extend),mime);
+            }
+            else{
+                statusCode = "HTTP/1.1 200 OK" ;
+                if(strcmp(buffer,"\0")!=0){
+                    printf("Status Code : %s\n",statusCode);
+                    printf("Response :\n%s \n", buffer); 
+                }
+                //traversing to the end of the file to obtain the file size
+                fseek(input,0L,SEEK_END);
+                fileSize = ftell(input);
+                fileCopy = malloc(fileSize+1);
+                //traversing back to the begining of the file to read the file
+                fseek(input,0L,SEEK_SET);
+                fread(fileCopy,sizeof(char),fileSize,input);
+                toRespond(clientSocket,statusCode,fileCopy,fileSize,mime);
+                free(fileCopy);
+                fclose(input);
+            }
+        }
     }
-    close(clientSocket);
-	close(server);
+    shutdown(clientSocket,2);
+	shutdown(server,2);
 	return 0;
 }
 
-void toRespond(int sock, char *header, void *body,int len) {
-    char response[len+256] ; 
-    sprintf(response,"%s\nConnection: close\nContent-Length: %d\nContent-Type: %s\n\n",header,len,mime);
+void toRespond(int sock, char *header, void *body,int len,char *fileType) {
+    char response[len+256];
+    //adding the request header to the reponse
+    sprintf(response,"%s\nConnection: close\nContent-Length: %d\nContent-Type: %s\n\n",header,len,fileType);
+    //appending the body to the response
     memcpy(response + strlen(response), body, len);
-    write(sock,response,strlen(response) + len);
+    if(write(sock,response,(strlen(response)+len))==-1){perror("[!] Write error :");}
 }
