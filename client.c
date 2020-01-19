@@ -7,7 +7,7 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 
-#define PORT 4200
+#define PORT 4400
 #define BUFFERSIZE 2048
 
 

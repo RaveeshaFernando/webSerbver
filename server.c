@@ -7,11 +7,9 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 
-#define PORT 4200
-
+#define PORT 4400
 #define BUFFERSIZE 2048
 
-#define css "text/css"
 #define gif "image/gif"
 #define htm "text/html"
 #define html "text/html"
@@ -40,9 +38,11 @@ char* body =   "<!DOCTYPE html>"
                         "<h4> mp4  - video1.mp4 </h4>"
                         "<h4> mp4  - video2.mp4 </h4>"
                         "<h4> jpg  - image1.jpg </h4>"
+                        "<h4> jpg  - image3.jpg </h4>"
                         "<h4> png  - image2.png </h4>"
-                        "<h4> html - page.html </h4>"
-                        "<h4> pdf  - readme.pdf </h4>"
+                        "<h4> html - googleHome.html </h4>"
+                        "<h4> pdf  - networking.pdf </h4>"
+                        "<br><h2> to exit : /exit </h2>"
                         "<h2> copy and paste the file name on the url to visit them. </h2>"
                     "</body>"
                 "</html>";
@@ -142,6 +142,18 @@ int main(int argc , char *argv[]){
                 bzero(reply,sizeof(reply));
             }
         }
+        //to exit from the loop
+        else if(!strcmp(rType, "GET") && !strcmp(rPath, "/exit")){
+            char* msg = "<br><br><h1><center> Server Shutdown!</center></h1>" ;
+            mime = html ; 
+            toRespond(clientSocket,"HTTP/1.1 200 OK",msg, strlen(msg),mime);
+            printf("[!] Disconnecting from server...\n");
+            sleep(3);
+            printf("[!] Disconnected!\n\n");
+            shutdown(clientSocket,2);
+	        shutdown(server,2);
+	        return 0;
+        }    
         else{
             //open the file with having read permissions 
             FILE *input = fopen(strtok(rPath, "/"),"r");
@@ -150,7 +162,7 @@ int main(int argc , char *argv[]){
                 statusCode = "HTTP/1.1 404 NOT FOUND";
                 printf("status code : %s\n",statusCode);
                 printf("Response :\n%s \n", buffer); 
-                char* extend = "<br><br><h2><center> HTTP/1.1 404 : File Not Found</center></h2>" ;
+                char* extend = "<br><br><h2><center> ERROR 404 : File Not Found</center></h2>" ;
                 mime = html;
                 toRespond(clientSocket,statusCode, extend, strlen(extend),mime);
             }
